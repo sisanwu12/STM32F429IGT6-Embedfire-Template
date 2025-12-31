@@ -1,0 +1,80 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "CMake 配置",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "-DCMAKE_TOOLCHAIN_FILE=${workspaceFolder}/project/arm-gnu-none-eabi.cmake",
+                "-DCMAKE_SYSTEM_NAME=Generic",
+                "-DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE",
+                "-GNinja",
+                "-S", 
+                "project",
+                "-B", 
+                "build"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "CMake 构建",
+            "type": "shell",
+            "command": "cmake",
+            "args": [
+                "--build",
+                "${workspaceFolder}/build",
+                "--target",
+                "all"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            }
+        },
+        {
+            "label": "烧录",
+            "type": "shell",
+            "command": "openocd",
+            "args": [
+                "-f", "interface/cmsis-dap.cfg",
+                "-f", "target/stm32f4x.cfg",
+                "-c",
+                "program build/template.elf verify reset exit"
+            ],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "dependsOn": "CMake 构建",
+            "problemMatcher": []
+        },
+        {
+      "label": "清理",
+      "type": "shell",
+      "windows": {
+        "command": "powershell",
+        "args": [
+          "-Command",
+          "if (Test-Path ${workspaceFolder}/build) {Remove-Item ${workspaceFolder}/build -Recurse -Force}; if (Test-Path ${workspaceFolder}/.cache) {Remove-Item ${workspaceFolder}/.cache -Recurse -Force}"
+        ]
+      },
+      "linux": {
+        "command": "bash",
+        "args": ["-c", "rm -rf ${workspaceFolder}/build ${workspaceFolder}/.cache || true"]
+      },
+      "osx": {
+        "command": "bash",
+        "args": ["-c", "rm -rf ${workspaceFolder}/build ${workspaceFolder}/.cache || true"]
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "options": {
+              "cwd": "${workspaceFolder}"
+            }
+    }
+  ]
+}

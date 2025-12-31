@@ -1,0 +1,20 @@
+{
+    "editor.fontSize": 18,
+    "editor.fontFamily": "'Maple Mono NF CN','JetBrainsMono Nerd Font Mono',monospace",
+    "editor.fontLigatures": true,
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd",
+        "clangd.arguments": [
+        "--header-insertion=never",
+        "--background-index",
+        "--clang-tidy",
+        "--completion-style=detailed"
+    ],
+    "cmake.configureOnOpen": false,
+    "cmake.buildDirectory": "${workspaceFolder}/mcu/build",
+    "cmake.sourceDirectory": "${workspaceFolder}/project",
+    "cmake.generator": "Ninja",
+    "cmake.configureArgs": [
+        "-DCMAKE_SYSTEM_NAME=Generic"
+    ],
+}

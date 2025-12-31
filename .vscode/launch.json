@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "cwd": "${workspaceRoot}",
+      "executable": "./build/template.elf",
+      "device": "STM32F429IGT6",
+      "name": "Debug with OpenOCD",
+      "request": "launch",
+      "type": "cortex-debug",
+      "servertype": "openocd",
+      "configFiles": [
+        "interface/cmsis-dap.cfg",
+        "target/stm32f4x.cfg"
+      ],
+      "searchDir": [],
+      "interface": "jtag",
+      "runToEntryPoint": "main",
+      "svdFile": "${workspaceRoot}/mcu/Libraries/CMSIS/STM32F429.svd",
+      "showDevDebugOutput": "none"
+    },
+  ]
+}

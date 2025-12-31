@@ -1,0 +1,4 @@
+# 排除 build 文件夹
+build/
+# 排除 cache 文件夹
+.cache/
