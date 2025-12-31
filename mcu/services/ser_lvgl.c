@@ -26,6 +26,118 @@
 #if SER_LVGL_HAS_LIB
 #include "lvgl.h"
 
+typedef struct
+{
+  lv_obj_t *bar_bg;
+  lv_obj_t *bar_fill;
+} ui_boot_t;
+
+static void ui_set_width(void *obj, int32_t v)
+{
+  lv_obj_set_width((lv_obj_t *)obj, v);
+}
+
+static void ui_boot_screen_create(ui_boot_t *ui)
+{
+  /* ===== 背景 ===== */
+  lv_obj_t *scr = lv_screen_active();
+  lv_obj_remove_flag(scr, LV_OBJ_FLAG_SCROLLABLE);
+
+  lv_obj_set_style_bg_opa(scr, LV_OPA_COVER, 0);
+  lv_obj_set_style_bg_color(scr, lv_color_hex(0x0B1020), 0);
+  lv_obj_set_style_bg_grad_color(scr, lv_color_hex(0x121A33), 0);
+  lv_obj_set_style_bg_grad_dir(scr, LV_GRAD_DIR_VER, 0);
+
+  /* ===== 中央卡片 ===== */
+  int32_t card_w = (int32_t)PIXELS_W * 72 / 100;
+  int32_t card_h = (int32_t)PIXELS_H * 58 / 100;
+  if (card_w > 520)
+    card_w = 520;
+  if (card_h > 320)
+    card_h = 320;
+
+  lv_obj_t *card = lv_obj_create(scr);
+  lv_obj_set_size(card, card_w, card_h);
+  lv_obj_center(card);
+  lv_obj_set_style_radius(card, 22, 0);
+  lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
+  lv_obj_set_style_bg_color(card, lv_color_hex(0x16213E), 0);
+  lv_obj_set_style_bg_grad_color(card, lv_color_hex(0x1E2B52), 0);
+  lv_obj_set_style_bg_grad_dir(card, LV_GRAD_DIR_VER, 0);
+  lv_obj_set_style_border_width(card, 1, 0);
+  lv_obj_set_style_border_color(card, lv_color_hex(0x2B3A67), 0);
+  lv_obj_set_style_shadow_width(card, 24, 0);
+  lv_obj_set_style_shadow_opa(card, LV_OPA_30, 0);
+  lv_obj_set_style_shadow_color(card, lv_color_hex(0x000000), 0);
+  lv_obj_set_style_pad_all(card, 24, 0);
+  lv_obj_set_style_pad_row(card, 10, 0);
+
+  /* ===== Logo（简易圆形徽章） ===== */
+  lv_obj_t *badge = lv_obj_create(card);
+  lv_obj_set_size(badge, 64, 64);
+  lv_obj_set_style_radius(badge, 32, 0);
+  lv_obj_set_style_bg_opa(badge, LV_OPA_COVER, 0);
+  lv_obj_set_style_bg_color(badge, lv_color_hex(0x3D7BFF), 0);
+  lv_obj_set_style_bg_grad_color(badge, lv_color_hex(0x67D7FF), 0);
+  /* LVGL v9.4.0 不支持对角渐变方向，使用径向渐变来增强“徽章”质感 */
+  lv_obj_set_style_bg_grad_dir(badge, LV_GRAD_DIR_RADIAL, 0);
+  lv_obj_set_style_border_width(badge, 0, 0);
+  lv_obj_set_style_shadow_width(badge, 18, 0);
+  /* v9 中透明度常量以 5/10/20/30... 为主，这里选一个相近值 */
+  lv_obj_set_style_shadow_opa(badge, LV_OPA_30, 0);
+  lv_obj_set_style_shadow_color(badge, lv_color_hex(0x3D7BFF), 0);
+  lv_obj_align(badge, LV_ALIGN_TOP_MID, 0, 0);
+
+  /* ===== 标题 ===== */
+  lv_obj_t *title = lv_label_create(card);
+  /* 这里用到的汉字确保已在内置字体中包含（例如：歡/迎/使/用）。 */
+  lv_label_set_text(title, "欢迎使用");
+  lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
+  lv_obj_set_style_text_letter_space(title, 2, 0);
+  lv_obj_align_to(title, badge, LV_ALIGN_OUT_BOTTOM_MID, 0, 12);
+
+  /* ===== 副标题（包含中文与版本） ===== */
+  lv_obj_t *sub = lv_label_create(card);
+  /* 避免使用字体里可能不存在的符号（如 '·'），分隔符用 ASCII '|' 更稳妥。 */
+  lv_label_set_text(sub, "STM32F429 | LVGL 9.4.0 | 中文可用");
+  lv_obj_set_style_text_color(sub, lv_color_hex(0xB8C7FF), 0);
+  lv_obj_set_style_text_opa(sub, LV_OPA_90, 0);
+  lv_obj_set_style_text_letter_space(sub, 1, 0);
+  lv_obj_align_to(sub, title, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+
+  /* ===== 进度条（纯 lv_obj 实现） ===== */
+  ui->bar_bg = lv_obj_create(card);
+  lv_obj_set_height(ui->bar_bg, 12);
+  lv_obj_set_width(ui->bar_bg, card_w - 48);
+  lv_obj_set_style_radius(ui->bar_bg, 6, 0);
+  lv_obj_set_style_bg_opa(ui->bar_bg, LV_OPA_30, 0);
+  lv_obj_set_style_bg_color(ui->bar_bg, lv_color_hex(0x0A1024), 0);
+  lv_obj_set_style_border_width(ui->bar_bg, 0, 0);
+  lv_obj_align(ui->bar_bg, LV_ALIGN_BOTTOM_MID, 0, 0);
+
+  ui->bar_fill = lv_obj_create(ui->bar_bg);
+  lv_obj_set_height(ui->bar_fill, 12);
+  lv_obj_set_width(ui->bar_fill, 1);
+  lv_obj_set_style_radius(ui->bar_fill, 6, 0);
+  lv_obj_set_style_bg_opa(ui->bar_fill, LV_OPA_COVER, 0);
+  lv_obj_set_style_bg_color(ui->bar_fill, lv_color_hex(0x3D7BFF), 0);
+  lv_obj_set_style_bg_grad_color(ui->bar_fill, lv_color_hex(0x67D7FF), 0);
+  lv_obj_set_style_bg_grad_dir(ui->bar_fill, LV_GRAD_DIR_HOR, 0);
+  lv_obj_set_style_border_width(ui->bar_fill, 0, 0);
+  lv_obj_align(ui->bar_fill, LV_ALIGN_LEFT_MID, 0, 0);
+
+  /* ===== 动画：进度条来回流动 ===== */
+  lv_anim_t a;
+  lv_anim_init(&a);
+  lv_anim_set_var(&a, ui->bar_fill);
+  lv_anim_set_exec_cb(&a, ui_set_width);
+  lv_anim_set_duration(&a, 1200);
+  lv_anim_set_values(&a, 1, lv_obj_get_width(ui->bar_bg));
+  lv_anim_set_reverse_duration(&a, 800);
+  lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
+  lv_anim_start(&a);
+}
+
 static void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area,
                           uint8_t *px_map)
 {
@@ -61,12 +173,12 @@ static void lvgl_task(void *argument)
    */
   void *fb = dri_lcd_framebuffer();
   uint32_t fb_size = (uint32_t)PIXELS_W * (uint32_t)PIXELS_H * 2u;
-  lv_display_set_buffers(disp, fb, NULL, fb_size, LV_DISPLAY_RENDER_MODE_DIRECT);
+  lv_display_set_buffers(disp, fb, NULL, fb_size,
+                         LV_DISPLAY_RENDER_MODE_DIRECT);
 
-  /* 创建一个中文 label 作为移植验证 */
-  lv_obj_t *label = lv_label_create(lv_screen_active());
-  lv_label_set_text(label, "中文测试：你好，LVGL 9.4.0");
-  lv_obj_center(label);
+  /* 启动界面（含中文字体验证） */
+  ui_boot_t ui = {0};
+  ui_boot_screen_create(&ui);
 
   for (;;)
   {
@@ -97,14 +209,8 @@ void ser_lvgl_tick_inc_isr(uint32_t ms)
 
 #else /* SER_LVGL_HAS_LIB == 0 */
 
-void ser_lvgl_start(void)
-{
-  /* LVGL 未集成时保持空实现，便于你分阶段移植 */
-}
+void ser_lvgl_start(void) { /* LVGL 未集成时保持空实现，便于你分阶段移植 */ }
 
-void ser_lvgl_tick_inc_isr(uint32_t ms)
-{
-  (void)ms;
-}
+void ser_lvgl_tick_inc_isr(uint32_t ms) { (void)ms; }
 
 #endif

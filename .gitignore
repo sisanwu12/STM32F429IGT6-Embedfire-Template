@@ -2,3 +2,5 @@
 build/
 # 排除 cache 文件夹
 .cache/
+# 排除 lvgl 库文件夹
+lvgl-9.4.0/
