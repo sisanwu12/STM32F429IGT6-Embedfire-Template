@@ -28,6 +28,9 @@ set(DEV_DIR ${MCU_DIR}/devices)
 set(SER_DIR ${MCU_DIR}/services)
 set(APP_DIR ${MCU_DIR}/app)
 
+# 可选：LVGL（你后续把 LVGL 源码放到该目录后会自动参与编译）
+set(LVGL_DIR ${LIB_DIR}/lvgl)
+
 # crm组
 set(CRM_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../crm)
 # freeRTOS模块
@@ -85,6 +88,13 @@ file(GLOB SRC_FILES
     ${MEMMANG_DIR}/*.c
     ${FRTOS_SRC_DIR}/*.c
 )
+
+if (EXISTS ${LVGL_DIR}/lvgl.h)
+    message(STATUS "LVGL enabled: ${LVGL_DIR}")
+    include_directories(${LVGL_DIR})
+    file(GLOB_RECURSE LVGL_SRC_FILES ${LVGL_DIR}/src/*.c)
+    list(APPEND SRC_FILES ${LVGL_SRC_FILES})
+endif ()
 
 # 移除其他时钟基准文件
 list(REMOVE_ITEM SRC_FILES

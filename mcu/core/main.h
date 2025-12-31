@@ -62,9 +62,18 @@ extern "C"
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define LTDC_BUFF_ADDR 0xC0000000
-#define PIXELS_W 1024
-#define PIXELS_H 600
+/*
+ * LTDC 帧缓冲地址
+ *
+ * 重要：野火 F429 挑战者这类板卡为了避免与 LTDC 引脚冲突，SDRAM 通常挂在 FMC Bank2：
+ * - SDNE1/SDCKE1 使用 PH6/PH7
+ * - 对应 SDRAM 映射基地址为 0xD0000000
+ *
+ * 如果你的板卡确实把 SDRAM 接在 Bank1（PH3/PH2），才使用 0xC0000000。
+ */
+#define LTDC_BUFF_ADDR 0xD0000000
+#define PIXELS_W 800
+#define PIXELS_H 480
 #define PIXELS_DIR 0
 
   /* USER CODE BEGIN Private defines */

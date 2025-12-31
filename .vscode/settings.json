@@ -17,4 +17,10 @@
     "cmake.configureArgs": [
         "-DCMAKE_SYSTEM_NAME=Generic"
     ],
+    "[markdown]": {
+        "editor.defaultFormatter": "yzhang.markdown-all-in-one"
+    },
+    "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+    },
 }

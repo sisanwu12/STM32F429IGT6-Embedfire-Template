@@ -20,6 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_it.h"
 #include "FreeRTOS.h"
+#include "ser_lvgl.h"
 #include "stm32f4xx_hal.h"
 #include "task.h"
 /* Private includes ----------------------------------------------------------*/
@@ -191,6 +192,9 @@ void SysTick_Handler(void)
   /* USER CODE END SysTick_IRQn 0 */
   HAL_IncTick();
   /* USER CODE BEGIN SysTick_IRQn 1 */
+
+  /* LVGL 时基：若当前工程未集成 LVGL，此函数为空实现 */
+  ser_lvgl_tick_inc_isr(1);
 
   xPortSysTickHandler(); // 调度 FreeRTOS 任务
 
