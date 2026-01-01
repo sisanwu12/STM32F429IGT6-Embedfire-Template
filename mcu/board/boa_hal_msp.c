@@ -1,11 +1,14 @@
 #include "stm32f4xx_hal.h"
 
 /*
- * 本文件提供 LTDC/SDRAM 的 MSP 初始化（GPIO + 时钟，按 drivers/dri_* 命名规范）
+ * board/ 层：板级支持（BSP）
+ *
+ * 本文件提供 LTDC/SDRAM 的 MSP 初始化（GPIO + 时钟 + 中断优先级），用于描述：
+ * “这块 PCB 的引脚/外设资源如何装配”。
  *
  * 设计目标：
  * - 不修改 ST 的 HAL 库源码（mcu/Libraries/...）
- * - 让 HAL_LTDC_Init / HAL_SDRAM_Init 能够真正把外设引脚拉起来
+ * - 让 HAL_LTDC_Init / HAL_SDRAM_Init 能够正确完成引脚复用与时钟打开
  *
  * 引脚映射依据：
  * - doc/原理图/野火_F429挑战者_核心板_原理图_V2.1.pdf
@@ -203,4 +206,42 @@ void HAL_SDRAM_MspDeInit(SDRAM_HandleTypeDef *hsdram)
   }
 
   __HAL_RCC_FMC_CLK_DISABLE();
+}
+
+/* ==========================
+ * I2C1 MSP（CTP 等外设常用）
+ * ========================== */
+void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
+{
+  if (hi2c->Instance != I2C1)
+  {
+    return;
+  }
+
+  __HAL_RCC_I2C1_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+
+  /*
+   * I2C1 引脚（来自原理图常见映射）：
+   * - PB6: I2C1_SCL
+   * - PB7: I2C1_SDA
+   */
+  GPIO_InitTypeDef gpio = {0};
+  gpio.Pin = GPIO_PIN_6 | GPIO_PIN_7;
+  gpio.Mode = GPIO_MODE_AF_OD;
+  gpio.Pull = GPIO_PULLUP;
+  gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  gpio.Alternate = GPIO_AF4_I2C1;
+  HAL_GPIO_Init(GPIOB, &gpio);
+}
+
+void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
+{
+  if (hi2c->Instance != I2C1)
+  {
+    return;
+  }
+
+  __HAL_RCC_I2C1_CLK_DISABLE();
+  HAL_GPIO_DeInit(GPIOB, GPIO_PIN_6 | GPIO_PIN_7);
 }

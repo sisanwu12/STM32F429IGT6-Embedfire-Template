@@ -42,6 +42,8 @@ extern "C" {
 
 #include "src/display/lv_display.h"
 
+#include "src/indev/lv_indev.h"
+
 #include "src/core/lv_obj.h"
 #include "src/core/lv_obj_pos.h"
 

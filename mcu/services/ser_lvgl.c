@@ -3,8 +3,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-#include "dri_lcd_ltdc.h"
-#include "main.h"
+#include "dev_lcd.h"
+#include "dev_touch.h"
 
 /*
  * 通过 __has_include 在“未引入 LVGL 源码”阶段保持工程可编译
@@ -30,11 +30,79 @@ typedef struct
 {
   lv_obj_t *bar_bg;
   lv_obj_t *bar_fill;
+
+  /* 计数按钮相关 */
+  lv_obj_t *count_label;
+  uint32_t count;
+
+  /* 触摸调试显示（用于确认坐标/按下状态） */
+  lv_obj_t *tp_label;
 } ui_boot_t;
+
+static volatile uint16_t s_tp_x = 0;
+static volatile uint16_t s_tp_y = 0;
+static volatile uint8_t s_tp_pressed = 0;
+
+static void ui_touch_debug_timer_cb(lv_timer_t *t)
+{
+  ui_boot_t *ui = (ui_boot_t *)lv_timer_get_user_data(t);
+  if (ui == NULL || ui->tp_label == NULL)
+  {
+    return;
+  }
+
+  lv_label_set_text_fmt(ui->tp_label, "TP:%u (%u,%u)", (unsigned)s_tp_pressed,
+                        (unsigned)s_tp_x, (unsigned)s_tp_y);
+}
+
+static void ui_count_update(ui_boot_t *ui)
+{
+  /* 只显示数字，避免中文缺字影响演示 */
+  lv_label_set_text_fmt(ui->count_label, "%lu", (unsigned long)ui->count);
+}
 
 static void ui_set_width(void *obj, int32_t v)
 {
   lv_obj_set_width((lv_obj_t *)obj, v);
+}
+
+static void ui_count_btn_event_cb(lv_event_t *e)
+{
+  ui_boot_t *ui = (ui_boot_t *)lv_event_get_user_data(e);
+  if (ui == NULL)
+  {
+    return;
+  }
+
+  if (lv_event_get_code(e) == LV_EVENT_CLICKED)
+  {
+    ui->count++;
+    ui_count_update(ui);
+  }
+}
+
+static void lvgl_indev_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
+{
+  (void)indev;
+
+  bool pressed = false;
+  uint16_t x = 0, y = 0;
+  (void)dev_touch_read(&pressed, &x, &y);
+
+  data->state = pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+  /* 防止触摸坐标超出屏幕导致“点到了但控件收不到” */
+  if (x >= dev_lcd_width())
+    x = (uint16_t)(dev_lcd_width() - 1u);
+  if (y >= dev_lcd_height())
+    y = (uint16_t)(dev_lcd_height() - 1u);
+
+  data->point.x = (int32_t)x;
+  data->point.y = (int32_t)y;
+
+  /* 额外保存一份调试信息（用于屏幕显示） */
+  s_tp_x = x;
+  s_tp_y = y;
+  s_tp_pressed = pressed ? 1u : 0u;
 }
 
 static void ui_boot_screen_create(ui_boot_t *ui)
@@ -49,8 +117,8 @@ static void ui_boot_screen_create(ui_boot_t *ui)
   lv_obj_set_style_bg_grad_dir(scr, LV_GRAD_DIR_VER, 0);
 
   /* ===== 中央卡片 ===== */
-  int32_t card_w = (int32_t)PIXELS_W * 72 / 100;
-  int32_t card_h = (int32_t)PIXELS_H * 58 / 100;
+  int32_t card_w = (int32_t)dev_lcd_width() * 72 / 100;
+  int32_t card_h = (int32_t)dev_lcd_height() * 58 / 100;
   if (card_w > 520)
     card_w = 520;
   if (card_h > 320)
@@ -59,6 +127,7 @@ static void ui_boot_screen_create(ui_boot_t *ui)
   lv_obj_t *card = lv_obj_create(scr);
   lv_obj_set_size(card, card_w, card_h);
   lv_obj_center(card);
+  lv_obj_remove_flag(card, LV_OBJ_FLAG_SCROLLABLE);
   lv_obj_set_style_radius(card, 22, 0);
   lv_obj_set_style_bg_opa(card, LV_OPA_COVER, 0);
   lv_obj_set_style_bg_color(card, lv_color_hex(0x16213E), 0);
@@ -71,6 +140,21 @@ static void ui_boot_screen_create(ui_boot_t *ui)
   lv_obj_set_style_shadow_color(card, lv_color_hex(0x000000), 0);
   lv_obj_set_style_pad_all(card, 24, 0);
   lv_obj_set_style_pad_row(card, 10, 0);
+
+  /* ===== 左上角触摸调试信息 ===== */
+  ui->tp_label = lv_label_create(scr);
+  lv_label_set_text(ui->tp_label, "TP:0 (0,0)");
+  lv_obj_set_style_text_color(ui->tp_label, lv_color_hex(0x9FB3FF), 0);
+  lv_obj_set_style_text_opa(ui->tp_label, LV_OPA_80, 0);
+  lv_obj_align(ui->tp_label, LV_ALIGN_TOP_LEFT, 8, 6);
+
+  /* ===== 计数显示（数字） ===== */
+  ui->count = 0;
+  ui->count_label = lv_label_create(card);
+  lv_label_set_text(ui->count_label, "0");
+  lv_obj_set_style_text_color(ui->count_label, lv_color_hex(0xFFFFFF), 0);
+  lv_obj_set_style_text_opa(ui->count_label, LV_OPA_90, 0);
+  lv_obj_set_style_text_letter_space(ui->count_label, 1, 0);
 
   /* ===== Logo（简易圆形徽章） ===== */
   lv_obj_t *badge = lv_obj_create(card);
@@ -91,7 +175,7 @@ static void ui_boot_screen_create(ui_boot_t *ui)
   /* ===== 标题 ===== */
   lv_obj_t *title = lv_label_create(card);
   /* 这里用到的汉字确保已在内置字体中包含（例如：歡/迎/使/用）。 */
-  lv_label_set_text(title, "欢迎使用");
+  lv_label_set_text(title, "歡迎使用");
   lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), 0);
   lv_obj_set_style_text_letter_space(title, 2, 0);
   lv_obj_align_to(title, badge, LV_ALIGN_OUT_BOTTOM_MID, 0, 12);
@@ -104,6 +188,30 @@ static void ui_boot_screen_create(ui_boot_t *ui)
   lv_obj_set_style_text_opa(sub, LV_OPA_90, 0);
   lv_obj_set_style_text_letter_space(sub, 1, 0);
   lv_obj_align_to(sub, title, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
+
+  /* ===== “+1” 按钮（用 lv_obj 模拟，避免额外搬运按钮控件） ===== */
+  lv_obj_t *btn = lv_obj_create(card);
+  lv_obj_set_size(btn, 160, 48);
+  lv_obj_set_style_radius(btn, 14, 0);
+  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
+  lv_obj_set_style_bg_color(btn, lv_color_hex(0x2B3A67), 0);
+  lv_obj_set_style_border_width(btn, 1, 0);
+  lv_obj_set_style_border_color(btn, lv_color_hex(0x3D7BFF), 0);
+  lv_obj_set_style_shadow_width(btn, 14, 0);
+  lv_obj_set_style_shadow_opa(btn, LV_OPA_30, 0);
+  lv_obj_set_style_shadow_color(btn, lv_color_hex(0x000000), 0);
+  lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_add_event_cb(btn, ui_count_btn_event_cb, LV_EVENT_CLICKED, ui);
+  lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -28);
+
+  lv_obj_t *btn_txt = lv_label_create(btn);
+  lv_label_set_text(btn_txt, "Tap +1");
+  lv_obj_set_style_text_color(btn_txt, lv_color_hex(0xFFFFFF), 0);
+  lv_obj_center(btn_txt);
+
+  /* 把数字放在按钮上方，便于观察 */
+  lv_obj_align_to(ui->count_label, btn, LV_ALIGN_OUT_TOP_MID, 0, -10);
+  ui_count_update(ui);
 
   /* ===== 进度条（纯 lv_obj 实现） ===== */
   ui->bar_bg = lv_obj_create(card);
@@ -163,7 +271,7 @@ static void lvgl_task(void *argument)
   lv_init();
 
   /* 创建并配置 display（LVGL v9 API） */
-  lv_display_t *disp = lv_display_create(PIXELS_W, PIXELS_H);
+  lv_display_t *disp = lv_display_create(dev_lcd_width(), dev_lcd_height());
   lv_display_set_color_format(disp, LV_COLOR_FORMAT_RGB565);
   lv_display_set_flush_cb(disp, lvgl_flush_cb);
 
@@ -171,14 +279,23 @@ static void lvgl_task(void *argument)
    * DIRECT 模式：framebuffer 直接作为 LVGL 绘制目标
    * - buf_size 以“字节”为单位
    */
-  void *fb = dri_lcd_framebuffer();
-  uint32_t fb_size = (uint32_t)PIXELS_W * (uint32_t)PIXELS_H * 2u;
+  void *fb = dev_lcd_framebuffer();
+  uint32_t fb_size =
+      (uint32_t)dev_lcd_width() * (uint32_t)dev_lcd_height() * 2u;
   lv_display_set_buffers(disp, fb, NULL, fb_size,
                          LV_DISPLAY_RENDER_MODE_DIRECT);
+
+  /* 绑定触摸输入（电容屏） */
+  (void)dev_touch_init();
+  lv_indev_t *indev = lv_indev_create();
+  lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
+  lv_indev_set_display(indev, disp);
+  lv_indev_set_read_cb(indev, lvgl_indev_read_cb);
 
   /* 启动界面（含中文字体验证） */
   ui_boot_t ui = {0};
   ui_boot_screen_create(&ui);
+  (void)lv_timer_create(ui_touch_debug_timer_cb, 100, &ui);
 
   for (;;)
   {

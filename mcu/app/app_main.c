@@ -1,8 +1,8 @@
 #include "app_main.h"
 
-#include "dri_lcd_ltdc.h"
-#include "dri_sdram.h"
-#include "dri_lcd_panel.h"
+#include "dev_lcd.h"
+#include "dev_lcd_panel.h"
+#include "dev_sdram.h"
 #include "ser_lvgl.h"
 
 /*
@@ -13,7 +13,7 @@
 void app_init(void)
 {
   /* 1) 初始化 SDRAM（帧缓冲在外部 SDRAM） */
-  if (dri_sdram_init() != HAL_OK)
+  if (dev_sdram_init() != HAL_OK)
   {
     while (1)
     {
@@ -21,7 +21,7 @@ void app_init(void)
   }
 
   /* 2) 初始化 LTDC 并点亮背光 */
-  if (dri_lcd_ltdc_init() != HAL_OK)
+  if (dev_lcd_init() != HAL_OK)
   {
     while (1)
     {
@@ -29,7 +29,7 @@ void app_init(void)
   }
 
   /* 3) 上电默认填充一个纯色，确认显示链路正常 */
-  dri_lcd_fill_rgb565(LCD_COLOR_BLUE_RGB565);
+  dev_lcd_fill_rgb565(LCD_COLOR_BLUE_RGB565);
 }
 
 /*
@@ -45,4 +45,3 @@ void app_start(void)
    */
   ser_lvgl_start();
 }
-

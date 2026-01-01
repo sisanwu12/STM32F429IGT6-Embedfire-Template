@@ -1,35 +1,30 @@
 #include "dri_lcd_ltdc.h"
 
-#include "dri_lcd_panel.h"
-#include "main.h"
+#include "boa_lcd_backlight.h"
 
 static LTDC_HandleTypeDef hltdc;
 
-static void LCD_Backlight_On(void)
+static uint32_t s_fb_addr = 0;
+static uint32_t s_w = 0;
+static uint32_t s_h = 0;
+static dri_lcd_fb_format_t s_fb_format = DRI_LCD_FB_RGB565;
+
+HAL_StatusTypeDef dri_lcd_ltdc_init(const dri_lcd_ltdc_cfg_t *cfg)
 {
-  /*
-   * 根据 doc/ 原理图（核心板/底板）：
-   * - LCD 背光控制脚为 PD7（标注 LCD_BL）
-   * - 这里先用 GPIO 输出高电平打开背光（若你的硬件是 PWM 调光，可改为 TIM PWM）
-   */
-  __HAL_RCC_GPIOD_CLK_ENABLE();
+  if (cfg == NULL || cfg->width == 0 || cfg->height == 0)
+  {
+    return HAL_ERROR;
+  }
 
-  GPIO_InitTypeDef gpio = {0};
-  gpio.Pin = GPIO_PIN_7;
-  gpio.Mode = GPIO_MODE_OUTPUT_PP;
-  gpio.Pull = GPIO_NOPULL;
-  gpio.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOD, &gpio);
+  s_fb_addr = cfg->framebuffer_addr;
+  s_w = cfg->width;
+  s_h = cfg->height;
+  s_fb_format = cfg->fb_format;
 
-  HAL_GPIO_WritePin(GPIOD, GPIO_PIN_7, GPIO_PIN_SET);
-}
-
-HAL_StatusTypeDef dri_lcd_ltdc_init(void)
-{
   /*
    * LTDC 时序初始化：
    * - 关键：LCD_HSYNC/HBP/HFP/VSYNC/VBP/VFP 必须匹配面板
-   * - 面板分辨率来自 main.h：PIXELS_W / PIXELS_H
+   * - 分辨率与时序由 devices/ 提供（通过 cfg 传入）
    */
   hltdc.Instance = LTDC;
 
@@ -45,21 +40,25 @@ HAL_StatusTypeDef dri_lcd_ltdc_init(void)
   hltdc.Init.DEPolarity = LTDC_DEPOLARITY_AH;
   hltdc.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
 
-  hltdc.Init.HorizontalSync = (uint32_t)(LCD_HSYNC - 1u);
-  hltdc.Init.VerticalSync = (uint32_t)(LCD_VSYNC - 1u);
+  hltdc.Init.HorizontalSync = (uint32_t)(cfg->timing.hsync - 1u);
+  hltdc.Init.VerticalSync = (uint32_t)(cfg->timing.vsync - 1u);
 
-  hltdc.Init.AccumulatedHBP = (uint32_t)(LCD_HSYNC + LCD_HBP - 1u);
-  hltdc.Init.AccumulatedVBP = (uint32_t)(LCD_VSYNC + LCD_VBP - 1u);
+  hltdc.Init.AccumulatedHBP =
+      (uint32_t)(cfg->timing.hsync + cfg->timing.hbp - 1u);
+  hltdc.Init.AccumulatedVBP =
+      (uint32_t)(cfg->timing.vsync + cfg->timing.vbp - 1u);
 
   hltdc.Init.AccumulatedActiveW =
-      (uint32_t)(LCD_HSYNC + LCD_HBP + PIXELS_W - 1u);
+      (uint32_t)(cfg->timing.hsync + cfg->timing.hbp + cfg->width - 1u);
   hltdc.Init.AccumulatedActiveH =
-      (uint32_t)(LCD_VSYNC + LCD_VBP + PIXELS_H - 1u);
+      (uint32_t)(cfg->timing.vsync + cfg->timing.vbp + cfg->height - 1u);
 
   hltdc.Init.TotalWidth =
-      (uint32_t)(LCD_HSYNC + LCD_HBP + PIXELS_W + LCD_HFP - 1u);
+      (uint32_t)(cfg->timing.hsync + cfg->timing.hbp + cfg->width +
+                 cfg->timing.hfp - 1u);
   hltdc.Init.TotalHeigh =
-      (uint32_t)(LCD_VSYNC + LCD_VBP + PIXELS_H + LCD_VFP - 1u);
+      (uint32_t)(cfg->timing.vsync + cfg->timing.vbp + cfg->height +
+                 cfg->timing.vfp - 1u);
 
   hltdc.Init.Backcolor.Red = 0;
   hltdc.Init.Backcolor.Green = 0;
@@ -76,17 +75,20 @@ HAL_StatusTypeDef dri_lcd_ltdc_init(void)
    */
   LTDC_LayerCfgTypeDef layer_cfg = {0};
   layer_cfg.WindowX0 = 0;
-  layer_cfg.WindowX1 = PIXELS_W;
+  layer_cfg.WindowX1 = cfg->width;
   layer_cfg.WindowY0 = 0;
-  layer_cfg.WindowY1 = PIXELS_H;
+  layer_cfg.WindowY1 = cfg->height;
 
-#if LCD_FB_FORMAT_RGB565
-  layer_cfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
-#else
-  layer_cfg.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
-#endif
+  if (cfg->fb_format == DRI_LCD_FB_RGB565)
+  {
+    layer_cfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
+  }
+  else
+  {
+    layer_cfg.PixelFormat = LTDC_PIXEL_FORMAT_ARGB8888;
+  }
 
-  layer_cfg.FBStartAdress = (uint32_t)LTDC_BUFF_ADDR;
+  layer_cfg.FBStartAdress = (uint32_t)cfg->framebuffer_addr;
   layer_cfg.Alpha = 255;
   layer_cfg.Alpha0 = 0;
   layer_cfg.Backcolor.Red = 0;
@@ -94,8 +96,8 @@ HAL_StatusTypeDef dri_lcd_ltdc_init(void)
   layer_cfg.Backcolor.Blue = 0;
   layer_cfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_PAxCA;
   layer_cfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_PAxCA;
-  layer_cfg.ImageWidth = PIXELS_W;
-  layer_cfg.ImageHeight = PIXELS_H;
+  layer_cfg.ImageWidth = cfg->width;
+  layer_cfg.ImageHeight = cfg->height;
 
   status = HAL_LTDC_ConfigLayer(&hltdc, &layer_cfg, 0);
   if (status != HAL_OK)
@@ -103,16 +105,18 @@ HAL_StatusTypeDef dri_lcd_ltdc_init(void)
     return status;
   }
 
-  LCD_Backlight_On();
+  boa_lcd_backlight_on();
   return HAL_OK;
 }
 
 void dri_lcd_fill_rgb565(uint16_t rgb565)
 {
-#if !LCD_FB_FORMAT_RGB565
-  (void)rgb565;
-  return;
-#else
+  if (s_fb_format != DRI_LCD_FB_RGB565)
+  {
+    (void)rgb565;
+    return;
+  }
+
   /*
    * 最简单的“单色填充”：
    * - 直接把帧缓冲每个像素写成同一个 RGB565 值
@@ -121,19 +125,18 @@ void dri_lcd_fill_rgb565(uint16_t rgb565)
    * - 帧缓冲位于外部 SDRAM，地址为 LTDC_BUFF_ADDR
    * - 在 LTDC 已经启动读取之前填充，能更直观地看到效果
    */
-  volatile uint16_t *fb = (volatile uint16_t *)(LTDC_BUFF_ADDR);
-  uint32_t pixel_count = (uint32_t)PIXELS_W * (uint32_t)PIXELS_H;
+  volatile uint16_t *fb = (volatile uint16_t *)(s_fb_addr);
+  uint32_t pixel_count = (uint32_t)s_w * (uint32_t)s_h;
 
   for (uint32_t i = 0; i < pixel_count; i++)
   {
     fb[i] = rgb565;
   }
-#endif
 }
 
 void *dri_lcd_framebuffer(void)
 {
-  return (void *)LTDC_BUFF_ADDR;
+  return (void *)s_fb_addr;
 }
 
 LTDC_HandleTypeDef *dri_lcd_ltdc_handle(void)

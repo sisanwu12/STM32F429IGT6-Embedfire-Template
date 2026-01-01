@@ -8,17 +8,39 @@ extern "C"
 #endif
 
 /*
- * 基于 LTDC 的 LCD 初始化与单色填充示例
+ * drivers/ 层：LTDC（片上外设）驱动
  *
- * 使用方式（最小流程）：
- * 1) HAL_Init()
- * 2) SystemClock_Config()（必须：给 LTDC/SDRAM 提供正确时钟）
- * 3) dri_sdram_init()
- * 4) dri_lcd_ltdc_init()
- * 5) dri_lcd_fill_rgb565(...)
+ * 说明：
+ * - drivers/ 只封装片上外设能力（LTDC），不硬编码外部面板参数
+ * - 外部面板的分辨率/时序等由 devices/ 负责提供并传入配置
  */
 
-HAL_StatusTypeDef dri_lcd_ltdc_init(void);
+typedef enum
+{
+  DRI_LCD_FB_RGB565 = 0,
+  DRI_LCD_FB_ARGB8888 = 1,
+} dri_lcd_fb_format_t;
+
+typedef struct
+{
+  uint16_t hsync;
+  uint16_t hbp;
+  uint16_t hfp;
+  uint16_t vsync;
+  uint16_t vbp;
+  uint16_t vfp;
+} dri_lcd_ltdc_timing_t;
+
+typedef struct
+{
+  uint32_t width;
+  uint32_t height;
+  uint32_t framebuffer_addr;
+  dri_lcd_fb_format_t fb_format;
+  dri_lcd_ltdc_timing_t timing;
+} dri_lcd_ltdc_cfg_t;
+
+HAL_StatusTypeDef dri_lcd_ltdc_init(const dri_lcd_ltdc_cfg_t *cfg);
 
 /* 仅示例：RGB565 单色填充 */
 void dri_lcd_fill_rgb565(uint16_t rgb565);

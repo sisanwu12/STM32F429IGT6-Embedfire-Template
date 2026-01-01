@@ -75,7 +75,7 @@ static void SystemClock_Config(void)
   /*
    * LTDC 像素时钟（PCLK）
    *
-   * 本工程当前面板时序（见 mcu/drivers/dri_lcd_panel.h）：
+   * 本工程当前面板时序（见 mcu/devices/dev_lcd_panel.h）：
    * - TotalW = 1057, TotalH = 526, FPS = 60
    * - PCLK ≈ 1057 * 526 * 60 ≈ 33.36 MHz
    *
