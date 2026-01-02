@@ -74,3 +74,50 @@ HAL_StatusTypeDef dri_i2c1_mem_write(uint16_t dev_addr_7bit, uint16_t mem_addr,
   return HAL_I2C_Mem_Write(&hi2c1, to_hal_addr(dev_addr_7bit), mem_addr,
                            mem_addr_size, (uint8_t *)data, len, timeout_ms);
 }
+
+HAL_StatusTypeDef dri_i2c1_is_device_ready(uint16_t dev_addr_7bit,
+                                          uint32_t trials,
+                                          uint32_t timeout_ms)
+{
+  if (dri_i2c1_init() != HAL_OK)
+  {
+    return HAL_ERROR;
+  }
+
+  return HAL_I2C_IsDeviceReady(&hi2c1, to_hal_addr(dev_addr_7bit), trials,
+                               timeout_ms);
+}
+
+HAL_StatusTypeDef dri_i2c1_write_read(uint16_t dev_addr_7bit,
+                                     const uint8_t *wbuf, uint16_t wlen,
+                                     uint8_t *rbuf, uint16_t rlen,
+                                     uint32_t timeout_ms)
+{
+  if (dri_i2c1_init() != HAL_OK)
+  {
+    return HAL_ERROR;
+  }
+
+  HAL_StatusTypeDef st =
+      HAL_I2C_Master_Transmit(&hi2c1, to_hal_addr(dev_addr_7bit),
+                              (uint8_t *)wbuf, wlen, timeout_ms);
+  if (st != HAL_OK)
+  {
+    return st;
+  }
+
+  return HAL_I2C_Master_Receive(&hi2c1, to_hal_addr(dev_addr_7bit), rbuf, rlen,
+                                timeout_ms);
+}
+
+HAL_StatusTypeDef dri_i2c1_write(uint16_t dev_addr_7bit, const uint8_t *wbuf,
+                                uint16_t wlen, uint32_t timeout_ms)
+{
+  if (dri_i2c1_init() != HAL_OK)
+  {
+    return HAL_ERROR;
+  }
+
+  return HAL_I2C_Master_Transmit(&hi2c1, to_hal_addr(dev_addr_7bit),
+                                 (uint8_t *)wbuf, wlen, timeout_ms);
+}

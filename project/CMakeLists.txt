@@ -71,7 +71,7 @@ include_directories(
 
 
 # 源文件
-file(GLOB SRC_FILES
+file(GLOB SRC_FILES CONFIGURE_DEPENDS
     # mcu组
     ${COR_DIR}/*.c
     ${LIB_DIR}/CMSIS/*.c
@@ -92,7 +92,7 @@ file(GLOB SRC_FILES
 if (EXISTS ${LVGL_DIR}/lvgl.h)
     message(STATUS "LVGL enabled: ${LVGL_DIR}")
     include_directories(${LVGL_DIR})
-    file(GLOB_RECURSE LVGL_SRC_FILES ${LVGL_DIR}/src/*.c)
+    file(GLOB_RECURSE LVGL_SRC_FILES CONFIGURE_DEPENDS ${LVGL_DIR}/src/*.c)
     list(APPEND SRC_FILES ${LVGL_SRC_FILES})
 endif ()
 

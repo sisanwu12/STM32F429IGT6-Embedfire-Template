@@ -213,35 +213,57 @@ void HAL_SDRAM_MspDeInit(SDRAM_HandleTypeDef *hsdram)
  * ========================== */
 void HAL_I2C_MspInit(I2C_HandleTypeDef *hi2c)
 {
-  if (hi2c->Instance != I2C1)
-  {
-    return;
-  }
-
-  __HAL_RCC_I2C1_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-
-  /*
-   * I2C1 引脚（来自原理图常见映射）：
-   * - PB6: I2C1_SCL
-   * - PB7: I2C1_SDA
-   */
   GPIO_InitTypeDef gpio = {0};
-  gpio.Pin = GPIO_PIN_6 | GPIO_PIN_7;
   gpio.Mode = GPIO_MODE_AF_OD;
   gpio.Pull = GPIO_PULLUP;
   gpio.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  gpio.Alternate = GPIO_AF4_I2C1;
-  HAL_GPIO_Init(GPIOB, &gpio);
+
+  if (hi2c->Instance == I2C1)
+  {
+    __HAL_RCC_I2C1_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+
+    /*
+     * I2C1 引脚（来自原理图常见映射）：
+     * - PB6: I2C1_SCL
+     * - PB7: I2C1_SDA
+     */
+    gpio.Pin = GPIO_PIN_6 | GPIO_PIN_7;
+    gpio.Alternate = GPIO_AF4_I2C1;
+    HAL_GPIO_Init(GPIOB, &gpio);
+    return;
+  }
+
+  if (hi2c->Instance == I2C2)
+  {
+    __HAL_RCC_I2C2_CLK_ENABLE();
+    __HAL_RCC_GPIOH_CLK_ENABLE();
+
+    /*
+     * I2C2 引脚（核心板原理图常见映射）：
+     * - PH4: I2C2_SCL
+     * - PH5: I2C2_SDA
+     */
+    gpio.Pin = GPIO_PIN_4 | GPIO_PIN_5;
+    gpio.Alternate = GPIO_AF4_I2C2;
+    HAL_GPIO_Init(GPIOH, &gpio);
+    return;
+  }
 }
 
 void HAL_I2C_MspDeInit(I2C_HandleTypeDef *hi2c)
 {
-  if (hi2c->Instance != I2C1)
+  if (hi2c->Instance == I2C1)
   {
+    __HAL_RCC_I2C1_CLK_DISABLE();
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_6 | GPIO_PIN_7);
     return;
   }
 
-  __HAL_RCC_I2C1_CLK_DISABLE();
-  HAL_GPIO_DeInit(GPIOB, GPIO_PIN_6 | GPIO_PIN_7);
+  if (hi2c->Instance == I2C2)
+  {
+    __HAL_RCC_I2C2_CLK_DISABLE();
+    HAL_GPIO_DeInit(GPIOH, GPIO_PIN_4 | GPIO_PIN_5);
+    return;
+  }
 }

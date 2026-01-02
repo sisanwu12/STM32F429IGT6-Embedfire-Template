@@ -46,6 +46,12 @@ static void rst_write(bool high)
                     high ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
 
+void boa_touch_rst_set(bool high)
+{
+  boa_touch_gpio_init();
+  rst_write(high);
+}
+
 void boa_touch_reset_pulse(void)
 {
   boa_touch_gpio_init();
@@ -61,6 +67,12 @@ bool boa_touch_int_is_active(void)
 {
   boa_touch_gpio_init();
   return (HAL_GPIO_ReadPin(BOA_CTP_INT_PORT, BOA_CTP_INT_PIN) == GPIO_PIN_RESET);
+}
+
+bool boa_touch_int_level_high(void)
+{
+  boa_touch_gpio_init();
+  return (HAL_GPIO_ReadPin(BOA_CTP_INT_PORT, BOA_CTP_INT_PIN) == GPIO_PIN_SET);
 }
 
 void boa_touch_int_set_output(bool output)
@@ -81,4 +93,3 @@ void boa_touch_int_write(bool high)
   HAL_GPIO_WritePin(BOA_CTP_INT_PORT, BOA_CTP_INT_PIN,
                     high ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
-

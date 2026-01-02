@@ -21,9 +21,11 @@ extern "C" {
 
 void boa_touch_gpio_init(void);
 void boa_touch_reset_pulse(void);
+void boa_touch_rst_set(bool high);
 
 /* INT 线通常为“低有效/上升沿触发”，这里提供读取/配置基础能力 */
 bool boa_touch_int_is_active(void);
+bool boa_touch_int_level_high(void);
 
 /* 供设备层做 reset/addr 选择时使用（某些控制器会在 reset 阶段复用 INT 脚） */
 void boa_touch_int_set_output(bool output);
@@ -32,4 +34,3 @@ void boa_touch_int_write(bool high);
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif
-
