@@ -34,56 +34,7 @@ typedef struct
   /* 计数按钮相关 */
   lv_obj_t *count_label;
   uint32_t count;
-
-  /* 触摸调试显示（用于确认坐标/按下状态） */
-  lv_obj_t *tp_label;
 } ui_boot_t;
-
-static volatile uint16_t s_tp_x = 0;
-static volatile uint16_t s_tp_y = 0;
-static volatile uint8_t s_tp_pressed = 0;
-
-static void ui_touch_debug_timer_cb(lv_timer_t *t)
-{
-  ui_boot_t *ui = (ui_boot_t *)lv_timer_get_user_data(t);
-  if (ui == NULL || ui->tp_label == NULL)
-  {
-    return;
-  }
-
-  lv_label_set_text_fmt(
-      ui->tp_label,
-      "TP:%u (%u,%u)\nB:%u A:0x%02X M:%u O:%u E:%u IA:%u IL:%u RL:%u ID:%s\nS0:%02X S1:%02X C:%ux%u C0:%ux%u C1:%ux%u\nP0:%s P1:%s G0:%s G1:%s\nW8140:%s\nW8150:%s\nR40:%s\nR4E:%s\nD:%04X %s\nS:%s",
-      (unsigned)s_tp_pressed, (unsigned)s_tp_x, (unsigned)s_tp_y,
-      (unsigned)dev_touch_debug_bus_id(),
-      (unsigned)dev_touch_debug_addr_7bit(),
-      (unsigned)dev_touch_debug_i2c_ready_mask(),
-      (unsigned)dev_touch_debug_reg_order(),
-      (unsigned)dev_touch_debug_last_err(),
-      (unsigned)dev_touch_debug_int_active(),
-      (unsigned)dev_touch_debug_int_level_high(),
-      (unsigned)dev_touch_debug_rst_low_ready_mask(),
-      dev_touch_debug_product_id(),
-      (unsigned)dev_touch_debug_status_msb(),
-      (unsigned)dev_touch_debug_status_lsb(),
-      (unsigned)dev_touch_debug_cfg_x(),
-      (unsigned)dev_touch_debug_cfg_y(),
-      (unsigned)dev_touch_debug_cfg_x_msb(),
-      (unsigned)dev_touch_debug_cfg_y_msb(),
-      (unsigned)dev_touch_debug_cfg_x_lsb(),
-      (unsigned)dev_touch_debug_cfg_y_lsb(),
-      dev_touch_debug_pid_hex_msb(),
-      dev_touch_debug_pid_hex_lsb(),
-      dev_touch_debug_cfg_hex_msb(),
-      dev_touch_debug_cfg_hex_lsb(),
-      dev_touch_debug_8140_hex(),
-      dev_touch_debug_8150_hex(),
-      dev_touch_debug_r40_hex(),
-      dev_touch_debug_r4e_hex(),
-      (unsigned)dev_touch_debug_diff_addr(),
-      dev_touch_debug_diff_hex(),
-      dev_touch_debug_i2c_scan());
-}
 
 static void ui_count_update(ui_boot_t *ui)
 {
@@ -128,11 +79,6 @@ static void lvgl_indev_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 
   data->point.x = (int32_t)x;
   data->point.y = (int32_t)y;
-
-  /* 额外保存一份调试信息（用于屏幕显示） */
-  s_tp_x = x;
-  s_tp_y = y;
-  s_tp_pressed = pressed ? 1u : 0u;
 }
 
 static void ui_boot_screen_create(ui_boot_t *ui)
@@ -170,13 +116,6 @@ static void ui_boot_screen_create(ui_boot_t *ui)
   lv_obj_set_style_shadow_color(card, lv_color_hex(0x000000), 0);
   lv_obj_set_style_pad_all(card, 24, 0);
   lv_obj_set_style_pad_row(card, 10, 0);
-
-  /* ===== 左上角触摸调试信息 ===== */
-  ui->tp_label = lv_label_create(scr);
-  lv_label_set_text(ui->tp_label, "TP:0 (0,0)");
-  lv_obj_set_style_text_color(ui->tp_label, lv_color_hex(0x9FB3FF), 0);
-  lv_obj_set_style_text_opa(ui->tp_label, LV_OPA_80, 0);
-  lv_obj_align(ui->tp_label, LV_ALIGN_TOP_LEFT, 8, 6);
 
   /* ===== 计数显示（数字） ===== */
   ui->count = 0;
@@ -325,7 +264,6 @@ static void lvgl_task(void *argument)
   /* 启动界面（含中文字体验证） */
   ui_boot_t ui = {0};
   ui_boot_screen_create(&ui);
-  (void)lv_timer_create(ui_touch_debug_timer_cb, 100, &ui);
 
   for (;;)
   {

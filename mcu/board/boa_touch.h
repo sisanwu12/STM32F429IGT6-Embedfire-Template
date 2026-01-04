@@ -31,6 +31,14 @@ bool boa_touch_int_level_high(void);
 void boa_touch_int_set_output(bool output);
 void boa_touch_int_write(bool high);
 
+/*
+ * GT9xx/GT615 常用复位序列（来自已验证可用的官方示例）：
+ * - 复位阶段 INT 作为输出用于选择 I2C 地址（INT=0 常对应 0x5D）
+ * - RST 低/高并保持足够延时
+ * - 释放 INT 为输入（浮空）
+ */
+void boa_touch_reset_for_gt9xx(bool int_high);
+
 #ifdef __cplusplus
 } /*extern "C"*/
 #endif
