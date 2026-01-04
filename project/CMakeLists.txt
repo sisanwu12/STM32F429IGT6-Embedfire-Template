@@ -57,7 +57,6 @@ include_directories(
     ${LIB_DIR}/CMSIS
     ${LIB_DIR}/HAL_Driver
     ${LIB_DIR}/HAL_Driver/Legacy
-    ${LIB_DIR}/touch/Inc
     ${DRI_DIR}
     ${BOA_DIR}
     ${DEV_DIR}
@@ -78,7 +77,6 @@ file(GLOB SRC_FILES CONFIGURE_DEPENDS
     ${LIB_DIR}/CMSIS/*.c
     ${LIB_DIR}/HAL_Driver/*.c
     ${LIB_DIR}/HAL_Driver/Legacy/*.c
-    ${LIB_DIR}/touch/Src/*.c
     ${DRI_DIR}/*.c
     ${BOA_DIR}/*.c
     ${DEV_DIR}/*.c

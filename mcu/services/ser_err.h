@@ -1,7 +1,7 @@
 /**
  * @file		错误定义与处理头文件
  * @brief		用于错误类型的定义与处理函数的声明
- * @author	王广平
+ * @author	ssw12
  * @date		2025/12/31
  */
 #ifndef __ERR_H

@@ -1,7 +1,7 @@
 #include "stm32f4xx_hal.h"
 
 /*
- * board/ 层：板级支持（BSP）
+ * board/ 层：
  *
  * 本文件提供 LTDC/SDRAM 的 MSP 初始化（GPIO + 时钟 + 中断优先级），用于描述：
  * “这块 PCB 的引脚/外设资源如何装配”。
@@ -85,8 +85,7 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef *hltdc)
   HAL_GPIO_Init(GPIOF, &gpio);
 
   /* GPIOG: PG6(R7), PG7(CLK), PG10(G3), PG11(B3), PG12(B1) */
-  gpio.Pin =
-      GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12;
+  gpio.Pin = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_12;
   HAL_GPIO_Init(GPIOG, &gpio);
 
   /* GPIOH: PH2(R0), PH3(R1), PH8(R2), PH13(G2), PH15(G4) */
@@ -146,7 +145,8 @@ void HAL_SDRAM_MspInit(SDRAM_HandleTypeDef *hsdram)
    *
    * 注意：
    * - 不同板卡可能将 SDNE0/SDNE1 连接不同；本示例默认使用 Bank1（SDNE0）
-   * - 若你的硬件使用 Bank2（SDNE1），需要改 dri_sdram_init() 里的 Bank 选择与地址
+   * - 若你的硬件使用 Bank2（SDNE1），需要改 dri_sdram_init() 里的 Bank
+   * 选择与地址
    */
   GPIO_InitTypeDef gpio = {0};
   gpio.Mode = GPIO_MODE_AF_PP;

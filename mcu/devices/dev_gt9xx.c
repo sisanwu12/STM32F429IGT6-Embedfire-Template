@@ -1,9 +1,18 @@
-#include "gt9xx.h"
+#include "dev_gt9xx.h"
 
-#include "bsp_i2c_touch.h"
-#include "dri_i2c2.h"
+#include "dri_touch_gt9xx.h"
 
-#include "stm32f4xx_hal.h"
+#include <stddef.h>
+
+/**
+ * @file dev_gt9xx.c
+ * @brief devices 层：Goodix GT9xx/GT615 最小轮询读取实现
+ * @author ssw12
+ *
+ * 行为：
+ * - 初始化时做一次最小 I2C 连通性校验（0x8140）
+ * - 运行时读取 0x814E 的单点触摸并清状态
+ */
 
 /* Goodix 坐标读取寄存器（官方库：GTP_READ_COOR_ADDR） */
 #define GTP_READ_COOR_ADDR 0x814Eu
@@ -11,33 +20,34 @@
 /* Product ID（可用于连通性校验） */
 #define GTP_REG_VERSION 0x8140u
 
+#define GTP_I2C_TIMEOUT_MS 50u
+
 static HAL_StatusTypeDef gtp_mem_read(uint16_t reg, uint8_t *buf, uint16_t len)
 {
-  return dri_i2c2_mem_read(bsp_touch_addr_7bit(), reg, I2C_MEMADD_SIZE_16BIT, buf,
-                           len, 50);
+  return dri_touch_gt9xx_mem_read(reg, buf, len, GTP_I2C_TIMEOUT_MS);
 }
 
 static HAL_StatusTypeDef gtp_mem_write_u8(uint16_t reg, uint8_t v)
 {
-  return dri_i2c2_mem_write(bsp_touch_addr_7bit(), reg, I2C_MEMADD_SIZE_16BIT, &v,
-                            1, 50);
+  return dri_touch_gt9xx_write_u8(reg, v, GTP_I2C_TIMEOUT_MS);
 }
 
-int32_t GTP_Init_Panel(void)
+bool dev_gt9xx_init(void)
 {
-  I2C_Touch_Init();
+  dri_touch_gt9xx_init();
 
   /*
    * 最小连通性校验：
-   * - 读 0x8140（ProductID / Version 区域）若成功，基本说明 I2C + 地址 + 16-bit reg OK
+   * - 读 0x8140（ProductID / Version 区域）若成功，基本说明 I2C + 地址 + 16-bit
+   * reg OK
    */
   uint8_t pid[4] = {0};
   if (gtp_mem_read(GTP_REG_VERSION, pid, sizeof(pid)) != HAL_OK)
   {
-    return -1;
+    return false;
   }
 
-  return 0;
+  return true;
 }
 
 static uint16_t le16(const uint8_t *p)
@@ -45,7 +55,7 @@ static uint16_t le16(const uint8_t *p)
   return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
 }
 
-int GTP_Execu(int *x, int *y)
+int dev_gt9xx_read(int *x, int *y)
 {
   /*
    * 读取协议来自你验证可用的 touch/Src/gt9xx.c（GTP_Execu）：
@@ -72,8 +82,7 @@ int GTP_Execu(int *x, int *y)
 
   if ((finger & 0x80u) == 0u)
   {
-    /* 数据未就绪：清标志后退出，避免状态卡住 */
-    (void)gtp_mem_write_u8(GTP_READ_COOR_ADDR, 0);
+    /* 数据未就绪：保持寄存器状态，等待下一次轮询 */
     return 0;
   }
 
@@ -98,4 +107,3 @@ int GTP_Execu(int *x, int *y)
 
   return (int)touch_num;
 }
-

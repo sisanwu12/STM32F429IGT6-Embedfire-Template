@@ -72,10 +72,19 @@ static void lvgl_indev_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
 
   data->state = pressed ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
   /* 防止触摸坐标超出屏幕导致“点到了但控件收不到” */
-  if (x >= dev_lcd_width())
-    x = (uint16_t)(dev_lcd_width() - 1u);
-  if (y >= dev_lcd_height())
-    y = (uint16_t)(dev_lcd_height() - 1u);
+  const uint16_t w = dev_lcd_width();
+  const uint16_t h = dev_lcd_height();
+  if (w == 0u || h == 0u)
+  {
+    data->state = LV_INDEV_STATE_RELEASED;
+    data->point.x = 0;
+    data->point.y = 0;
+    return;
+  }
+  if (x >= w)
+    x = (uint16_t)(w - 1u);
+  if (y >= h)
+    y = (uint16_t)(h - 1u);
 
   data->point.x = (int32_t)x;
   data->point.y = (int32_t)y;
@@ -279,7 +288,7 @@ static void lvgl_task(void *argument)
 
 void ser_lvgl_start(void)
 {
-  (void)xTaskCreate(lvgl_task, "lvgl", 2048, NULL, tskIDLE_PRIORITY + 2, NULL);
+  (void)xTaskCreate(lvgl_task, "lvgl", 4096, NULL, tskIDLE_PRIORITY + 2, NULL);
 }
 
 void ser_lvgl_tick_inc_isr(uint32_t ms)
