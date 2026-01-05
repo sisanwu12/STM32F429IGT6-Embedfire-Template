@@ -25,6 +25,7 @@
 #include "task.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "dev_ultrasonic.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,6 +55,14 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  if (GPIO_Pin == GPIO_PIN_2)
+  {
+    dev_ultrasonic_echo_edge_isr();
+  }
+}
 
 /* USER CODE END 0 */
 
@@ -216,6 +225,7 @@ void EXTI2_IRQHandler(void)
   /* USER CODE BEGIN EXTI2_IRQn 0 */
 
   /* USER CODE END EXTI2_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_2);
 
   /* USER CODE BEGIN EXTI2_IRQn 1 */
 

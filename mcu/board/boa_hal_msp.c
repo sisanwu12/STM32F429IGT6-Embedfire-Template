@@ -3,12 +3,8 @@
 /*
  * board/ 层：
  *
- * 本文件提供 LTDC/SDRAM 的 MSP 初始化（GPIO + 时钟 + 中断优先级），用于描述：
- * “这块 PCB 的引脚/外设资源如何装配”。
+ * 本文件提供 LTDC/SDRAM 的 MSP 初始化
  *
- * 设计目标：
- * - 不修改 ST 的 HAL 库源码（mcu/Libraries/...）
- * - 让 HAL_LTDC_Init / HAL_SDRAM_Init 能够正确完成引脚复用与时钟打开
  *
  * 引脚映射依据：
  * - doc/原理图/野火_F429挑战者_核心板_原理图_V2.1.pdf
@@ -51,8 +47,6 @@ void HAL_LTDC_MspInit(LTDC_HandleTypeDef *hltdc)
    * - B4  PI4   - B5  PA3   - B6  PB8   - B7  PB9
    * - VS  PI9   - HS  PI10  - CLK PG7   - DE  PF10
    *
-   * 注意：
-   * - 不同底板版本可能有差异；如果你发现部分颜色通道不对，请对照原理图修正。
    */
   GPIO_InitTypeDef gpio = {0};
   gpio.Mode = GPIO_MODE_AF_PP;
@@ -136,12 +130,10 @@ void HAL_SDRAM_MspInit(SDRAM_HandleTypeDef *hsdram)
   /*
    * 3) 配置 FMC SDRAM 引脚（AF12）
    *
-   * 这里按 STM32F429 常见 16bit SDRAM 连接方式配置一组“覆盖面较全”的引脚集合，
-   * 与 doc/ 原理图中的 FMC 引脚匹配度较高：
    * - 地址线：PF0..PF5, PF11..PF15, PG0..PG2
    * - 数据线：PD14,PD15,PD0,PD1, PE7..PE15, PD8..PD10
    * - 控制线：PC0(WE), PF11(RAS), PG15(CAS), PG4(BA0), PG5(BA1),
-   *          PH7(CKE), PG8(CLK), PG9?（若有）, PH6(SDNE0/CS), ...（视硬件而定）
+   *          PH7(CKE), PG8(CLK), PH6(SDNE0/CS)
    *
    * 注意：
    * - 不同板卡可能将 SDNE0/SDNE1 连接不同；本示例默认使用 Bank1（SDNE0）

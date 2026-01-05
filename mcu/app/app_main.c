@@ -4,11 +4,12 @@
 #include "dev_lcd_panel.h"
 #include "dev_sdram.h"
 #include "ser_lvgl.h"
+#include "ser_ultrasonic.h"
 
 /*
  * app_init：
- * - 初始化与“产品功能相关”的外设组合（这里是 SDRAM + LCD）
- * - 不启动调度器，不阻塞
+ * - 初始化
+ * - 不启动调度器
  */
 void app_init(void)
 {
@@ -39,9 +40,11 @@ void app_init(void)
  */
 void app_start(void)
 {
+  /* 超声波测距服务：独立任务采样，供 UI 显示 */
+  ser_ultrasonic_start();
+
   /*
-   * LVGL 任务启动（若当前工程尚未加入 LVGL 源码/头文件，该函数会退化为空实现）
-   * 你后续把 LVGL 加进来后，这里无需再改。
+   * LVGL 任务启动
    */
   ser_lvgl_start();
 }

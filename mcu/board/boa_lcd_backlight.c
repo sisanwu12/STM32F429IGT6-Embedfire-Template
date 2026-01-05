@@ -3,7 +3,7 @@
 #include "stm32f4xx_hal.h"
 
 /*
- * 背光引脚（来自原理图标注 LCD_BL）：
+ * 背光引脚：
  * - PD7: LCD_BL
  */
 #define BOA_LCD_BL_GPIO_PORT GPIOD
@@ -37,4 +37,3 @@ void boa_lcd_backlight_set(bool on)
   HAL_GPIO_WritePin(BOA_LCD_BL_GPIO_PORT, BOA_LCD_BL_GPIO_PIN,
                     on ? GPIO_PIN_SET : GPIO_PIN_RESET);
 }
-

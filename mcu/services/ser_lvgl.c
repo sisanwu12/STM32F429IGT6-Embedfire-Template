@@ -5,6 +5,7 @@
 
 #include "dev_lcd.h"
 #include "dev_touch.h"
+#include "ser_ultrasonic.h"
 
 /*
  * 通过 __has_include 在“未引入 LVGL 源码”阶段保持工程可编译
@@ -31,35 +32,32 @@ typedef struct
   lv_obj_t *bar_bg;
   lv_obj_t *bar_fill;
 
-  /* 计数按钮相关 */
-  lv_obj_t *count_label;
-  uint32_t count;
+  /* 超声波距离显示 */
+  lv_obj_t *dist_label;
 } ui_boot_t;
 
-static void ui_count_update(ui_boot_t *ui)
+static void ui_ultrasonic_timer_cb(lv_timer_t *t)
 {
-  /* 只显示数字，避免中文缺字影响演示 */
-  lv_label_set_text_fmt(ui->count_label, "%lu", (unsigned long)ui->count);
+  ui_boot_t *ui = (ui_boot_t *)lv_timer_get_user_data(t);
+  if (ui == NULL || ui->dist_label == NULL)
+  {
+    return;
+  }
+
+  uint32_t mm = 0;
+  if (ser_ultrasonic_get_latest_mm(&mm))
+  {
+    lv_label_set_text_fmt(ui->dist_label, "Dist: %lu mm", (unsigned long)mm);
+  }
+  else
+  {
+    lv_label_set_text(ui->dist_label, "Dist: -- mm");
+  }
 }
 
 static void ui_set_width(void *obj, int32_t v)
 {
   lv_obj_set_width((lv_obj_t *)obj, v);
-}
-
-static void ui_count_btn_event_cb(lv_event_t *e)
-{
-  ui_boot_t *ui = (ui_boot_t *)lv_event_get_user_data(e);
-  if (ui == NULL)
-  {
-    return;
-  }
-
-  if (lv_event_get_code(e) == LV_EVENT_CLICKED)
-  {
-    ui->count++;
-    ui_count_update(ui);
-  }
 }
 
 static void lvgl_indev_read_cb(lv_indev_t *indev, lv_indev_data_t *data)
@@ -126,14 +124,6 @@ static void ui_boot_screen_create(ui_boot_t *ui)
   lv_obj_set_style_pad_all(card, 24, 0);
   lv_obj_set_style_pad_row(card, 10, 0);
 
-  /* ===== 计数显示（数字） ===== */
-  ui->count = 0;
-  ui->count_label = lv_label_create(card);
-  lv_label_set_text(ui->count_label, "0");
-  lv_obj_set_style_text_color(ui->count_label, lv_color_hex(0xFFFFFF), 0);
-  lv_obj_set_style_text_opa(ui->count_label, LV_OPA_90, 0);
-  lv_obj_set_style_text_letter_space(ui->count_label, 1, 0);
-
   /* ===== Logo（简易圆形徽章） ===== */
   lv_obj_t *badge = lv_obj_create(card);
   lv_obj_set_size(badge, 64, 64);
@@ -167,29 +157,13 @@ static void ui_boot_screen_create(ui_boot_t *ui)
   lv_obj_set_style_text_letter_space(sub, 1, 0);
   lv_obj_align_to(sub, title, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
 
-  /* ===== “+1” 按钮（用 lv_obj 模拟，避免额外搬运按钮控件） ===== */
-  lv_obj_t *btn = lv_obj_create(card);
-  lv_obj_set_size(btn, 160, 48);
-  lv_obj_set_style_radius(btn, 14, 0);
-  lv_obj_set_style_bg_opa(btn, LV_OPA_COVER, 0);
-  lv_obj_set_style_bg_color(btn, lv_color_hex(0x2B3A67), 0);
-  lv_obj_set_style_border_width(btn, 1, 0);
-  lv_obj_set_style_border_color(btn, lv_color_hex(0x3D7BFF), 0);
-  lv_obj_set_style_shadow_width(btn, 14, 0);
-  lv_obj_set_style_shadow_opa(btn, LV_OPA_30, 0);
-  lv_obj_set_style_shadow_color(btn, lv_color_hex(0x000000), 0);
-  lv_obj_add_flag(btn, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_add_event_cb(btn, ui_count_btn_event_cb, LV_EVENT_CLICKED, ui);
-  lv_obj_align(btn, LV_ALIGN_BOTTOM_MID, 0, -28);
-
-  lv_obj_t *btn_txt = lv_label_create(btn);
-  lv_label_set_text(btn_txt, "Tap +1");
-  lv_obj_set_style_text_color(btn_txt, lv_color_hex(0xFFFFFF), 0);
-  lv_obj_center(btn_txt);
-
-  /* 把数字放在按钮上方，便于观察 */
-  lv_obj_align_to(ui->count_label, btn, LV_ALIGN_OUT_TOP_MID, 0, -10);
-  ui_count_update(ui);
+  /* ===== 超声波距离显示 ===== */
+  ui->dist_label = lv_label_create(card);
+  lv_label_set_text(ui->dist_label, "Dist: -- mm");
+  lv_obj_set_style_text_color(ui->dist_label, lv_color_hex(0xE6EEFF), 0);
+  lv_obj_set_style_text_opa(ui->dist_label, LV_OPA_90, 0);
+  lv_obj_set_style_text_letter_space(ui->dist_label, 1, 0);
+  lv_obj_align_to(ui->dist_label, sub, LV_ALIGN_OUT_BOTTOM_MID, 0, 10);
 
   /* ===== 进度条（纯 lv_obj 实现） ===== */
   ui->bar_bg = lv_obj_create(card);
@@ -273,6 +247,7 @@ static void lvgl_task(void *argument)
   /* 启动界面（含中文字体验证） */
   ui_boot_t ui = {0};
   ui_boot_screen_create(&ui);
+  (void)lv_timer_create(ui_ultrasonic_timer_cb, 200, &ui);
 
   for (;;)
   {
